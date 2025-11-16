@@ -1,0 +1,62 @@
+name: HTTP Bulk Scraper (High Performance)
+
+on:
+  workflow_dispatch:
+    inputs:
+      url_list:
+        description: 'JSON array of URLs'
+        required: true
+        type: string
+      concurrency:
+        description: 'Concurrent requests (default: 50)'
+        default: '50'
+        type: string
+      batch_id:
+        description: 'Batch ID for artifact naming'
+        required: true
+        type: string
+
+jobs:
+  http-scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scrapers
+            utils
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Bulk HTTP Scrape
+        id: scrape
+        env:
+          URL_LIST: ${{ inputs.url_list }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+          BATCH_ID: ${{ inputs.batch_id }}
+        run: |
+          node scrapers/http-batch-processor.js
+      
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: http-batch-${{ inputs.batch_id }}-results
+          path: results/*.json.gz
+          retention-days: 1
+          compression-level: 9
+      
+      - name: Report Stats
+        if: always()
+        run: |
+          echo "::notice title=HTTP Batch Complete::Success: ${{ steps.scrape.outputs.success_count }}, Failed: ${{ steps.scrape.outputs.failed_count }}, Duration: ${{ steps.scrape.outputs.duration_ms }}ms"
