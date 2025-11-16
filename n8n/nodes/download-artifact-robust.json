@@ -1,0 +1,21 @@
+{
+  "parameters": {
+    "url": "={{$json.artifactUrl}}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "githubApi",
+    "options": {
+      "timeout": 300000,
+      "retry": {
+        "maxRetries": 3,
+        "retryOnHttpStatusCodes": [408,429,500,502,503,504]
+      },
+      "response": {
+        "response": {
+          "responseFormat": "file"
+        }
+      }
+    }
+  },
+  "name": "Download Artifact (Robust)",
+  "type": "n8n-nodes-base.httpRequest"
+}
