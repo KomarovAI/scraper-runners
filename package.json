@@ -1,0 +1,41 @@
+{
+  "name": "scraper-runners",
+  "version": "1.0.0",
+  "description": "Optimized GitHub Actions runners for high-performance web scraping",
+  "main": "scrapers/batch-executor.js",
+  "private": false,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "scrape:http": "node scrapers/http-batch-processor.js",
+    "scrape:puppeteer": "node scrapers/puppeteer-optimized.js",
+    "aggregate": "node utils/result-aggregator.js",
+    "test": "echo 'No tests configured yet'"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0-rc.12",
+    "p-limit": "^5.0.0",
+    "playwright": "^1.45.0",
+    "puppeteer": "^22.6.5",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "scraping",
+    "puppeteer",
+    "playwright",
+    "github-actions",
+    "automation",
+    "web-scraping",
+    "high-performance"
+  ],
+  "author": "KomarovAI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KomarovAI/scraper-runners.git"
+  }
+}
