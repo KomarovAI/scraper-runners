@@ -1,0 +1,113 @@
+name: Scrape Batch (Matrix Optimized)
+
+on:
+  workflow_dispatch:
+    inputs:
+      batches:
+        description: 'JSON array of URL batches'
+        required: true
+        type: string
+      strategy:
+        description: 'Scraping strategy (http|puppeteer|playwright)'
+        required: false
+        default: 'http'
+        type: choice
+        options:
+          - http
+          - puppeteer
+          - playwright
+      max_parallel:
+        description: 'Max parallel jobs (1-256)'
+        required: false
+        default: '20'
+        type: string
+
+env:
+  NODE_VERSION: '20.x'
+  ARTIFACT_RETENTION_DAYS: 1
+
+jobs:
+  scrape-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        batch: ${{ fromJSON(inputs.batches) }}
+      max-parallel: ${{ fromJSON(inputs.max_parallel) }}
+      fail-fast: false
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scrapers
+            utils
+          sparse-checkout-cone-mode: false
+      
+      - name: Setup Node.js with Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        if: inputs.strategy == 'playwright'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      
+      - name: Execute Scraping
+        id: scrape
+        env:
+          BATCH_DATA: ${{ toJSON(matrix.batch) }}
+          STRATEGY: ${{ inputs.strategy }}
+        run: |
+          node scrapers/batch-executor.js
+      
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: batch-${{ matrix.batch.batchId }}-results
+          path: results/batch-${{ matrix.batch.batchId }}.json.gz
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+          compression-level: 9
+      
+      - name: Report Metrics
+        if: always()
+        run: |
+          echo "::notice title=Batch ${{ matrix.batch.batchId }}::URLs: ${{ matrix.batch.urlCount }}, Success: ${{ steps.scrape.outputs.success_count }}, Failed: ${{ steps.scrape.outputs.failed_count }}"
+
+  aggregate-results:
+    runs-on: ubuntu-latest
+    needs: scrape-matrix
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+      
+      - name: Aggregate Results
+        run: |
+          node utils/result-aggregator.js
+      
+      - name: Upload Final Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-results-${{ github.run_id }}
+          path: aggregated-results.json.gz
+          retention-days: 7
