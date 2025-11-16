@@ -1,0 +1,15 @@
+{
+  "parameters": {
+    "mode": "expression",
+    "output": "={{$json.strategy}}",
+    "rules": {
+      "rules": [
+        {"output": "nodriver"},
+        {"output": "playwright"},
+        {"output": "http"}
+      ]
+    }
+  },
+  "name": "Scraper Strategy Switch",
+  "type": "n8n-nodes-base.switch"
+}
